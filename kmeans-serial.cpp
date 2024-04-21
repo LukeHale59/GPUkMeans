@@ -1,4 +1,4 @@
-// Implementation of the KMeans Algorithm
+// Implementation of the KMeans Algorithm - test
 // reference: https://github.com/marcoscastro/kmeans
 
 #include <iostream>
