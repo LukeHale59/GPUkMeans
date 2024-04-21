@@ -19,7 +19,7 @@ CXX      = nvcc
 CXXFLAGS = -MMD -O3 -m$(BITS) -std=c++11
 LDFLAGS	 = -m$(BITS) -lpthread -lrt
 # The basenames of the c++ files that this program uses
-CXXFILES = kmeans-serial
+CXXFILES = kmeans-gpu
 
 # The executable we will build
 TARGET = $(ODIR)/p2
@@ -40,7 +40,7 @@ clean:
 	@rm -rf $(ODIR)
 
 # build an .o file from a .cc file
-$(ODIR)/%.o: %.cpp
+$(ODIR)/%.o: %.cu
 	@echo [CXX] $< "-->" $@
 	@$(CXX) $(CXXFLAGS) -c -o $@ $<
 
