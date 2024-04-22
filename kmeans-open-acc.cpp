@@ -242,6 +242,8 @@ public:
                     clusters[i].setCentralValue(j, sum / total_points_cluster);
                 }
             }
+
+			//#pragma omp parallel for
 			for(int i = 0; i < total_points; i++)
 			{
 				int id_old_cluster = points[i].getCluster();
@@ -296,7 +298,7 @@ public:
             // cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";
 		}
 		            //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
-            cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count();
+            cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() <<endl;
             //cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
             
             //cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";

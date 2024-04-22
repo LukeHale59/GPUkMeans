@@ -15,11 +15,11 @@ ODIR  = obj32Serial
 tmp  := $(shell mkdir -p $(ODIR))
 
 # Basic compiler configuration and flags
-CXX      = nvcc
-CXXFLAGS = -MMD -O3 -m$(BITS) -std=c++11
+CXX      = nvc++
+CXXFLAGS = -MMD -O3 -m$(BITS) -std=c++11 #-fast -Minfo=accel
 LDFLAGS	 = -m$(BITS) -lpthread -lrt
 # The basenames of the c++ files that this program uses
-CXXFILES = kmeans-gpu
+CXXFILES = kmeans-open-acc
 
 # The executable we will build
 TARGET = $(ODIR)/p2
@@ -40,7 +40,7 @@ clean:
 	@rm -rf $(ODIR)
 
 # build an .o file from a .cc file
-$(ODIR)/%.o: %.cu
+$(ODIR)/%.o: %.cpp
 	@echo [CXX] $< "-->" $@
 	@$(CXX) $(CXXFLAGS) -c -o $@ $<
 
