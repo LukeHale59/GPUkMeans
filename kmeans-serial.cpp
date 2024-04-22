@@ -391,37 +391,37 @@ public:
         std::chrono::high_resolution_clock::time_point end = chrono::high_resolution_clock::now();
 
 		// shows elements of clusters
-		// for(int i = 0; i < K; i++)
-		// {
-		// 	int total_points_cluster =  clusters[i].getTotalPoints();
+		for(int i = 0; i < K; i++)
+		{
+			int total_points_cluster =  clusters[i].getTotalPoints();
 
-		// 	cout << "Cluster " << clusters[i].getID() + 1 << endl;
-		// 	for(int j = 0; j < total_points_cluster; j++)
-		// 	{
-		// 		cout << "Point " << clusters[i].getPoint(j).getID() + 1 << ": ";
-		// 		for(int p = 0; p < total_values; p++)
-		// 			cout << clusters[i].getPoint(j).getValue(p) << " ";
+			cout << "Cluster " << clusters[i].getID() + 1 << endl;
+			// for(int j = 0; j < total_points_cluster; j++)
+			// {
+			// 	cout << "Point " << clusters[i].getPoint(j).getID() + 1 << ": ";
+			// 	for(int p = 0; p < total_values; p++)
+			// 		cout << clusters[i].getPoint(j).getValue(p) << " ";
 
-		// 		string point_name = clusters[i].getPoint(j).getName();
+			// 	string point_name = clusters[i].getPoint(j).getName();
 
-		// 		if(point_name != "")
-		// 			cout << "- " << point_name;
+			// 	if(point_name != "")
+			// 		cout << "- " << point_name;
 
-		// 		cout << endl;
-		// 	}
-		// 	cout << "total_points_cluster " << total_points_cluster << endl;
-		// 	cout << "Cluster values: ";
+			// 	cout << endl;
+			// }
+			cout << "total_points_cluster " << total_points_cluster << endl;
+			cout << "Cluster values: ";
 
-		// 	for(int j = 0; j < total_values; j++)
-		// 		cout << clusters[i].getCentralValue(j) << " ";
-
-		// 	// //cout << "\n\n";
-        //     // //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
+			for(int j = 0; j < total_values; j++)
+				cout << clusters[i].getCentralValue(j) << " ";
+			cout << endl;
+			// //cout << "\n\n";
+            // //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
             
-        //     // //cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
+            // //cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
             
-        //     // //cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";
-		// }
+            // //cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";
+		}
 		            //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
             cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() <<endl;
             //cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
