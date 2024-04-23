@@ -565,8 +565,8 @@ int main(int argc, char *argv[])
     //Point* points = new Point[total_points];
 	struct PointStruct{
 		int id_cluster;
-		double[total_values] values;
-	}
+		double* values = new double[12];
+	};
 	PointStruct* points = new PointStruct[total_points];
 
 	for(int i = 0; i < total_points; i++)
@@ -580,10 +580,10 @@ int main(int argc, char *argv[])
 	}
 
 	struct ClusterStruct{
-		double[total_values] central_values;
-    	double[total_values] central_values_Sums;
+		double* central_values = new double[12];
+    	double* central_values_sums = new double[12];
     	int numPoints;
-	}
+	};
 	//KMeans kmeans(K, total_points, total_values, max_iterations);
 	ClusterStruct* clusters = new ClusterStruct[K];
 	std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
@@ -603,9 +603,9 @@ int main(int argc, char *argv[])
 				prohibited_indexes.push_back(index_point);
 				points[index_point].id_cluster=i;
 				clusters[i].numPoints = 0;
-				for(size_t = j,j<total_values;j++){
-					clusters[i].central_values[j] = points[index_point].values[j]
-					clusters[i].central_values_sum[j]=0
+				for(size_t j = 0;j<total_values;j++){
+					clusters[i].central_values[j] = points[index_point].values[j];
+					clusters[i].central_values_sums[j]=0;
 				}
 				break;
 			}
@@ -635,7 +635,7 @@ int main(int argc, char *argv[])
 	{
 		double sum = 0.0, min_dist;
 		int id_cluster_center = 0;
-		for(int i = 0; j < total_values; j++)
+		for(int j = 0; j < total_values; j++)
 		{
 			sum += pow(clusters[0].central_values[j] -
 					   points[i].values[j], 2.0);
@@ -647,7 +647,7 @@ int main(int argc, char *argv[])
 			sum = 0.0;
 			for(int j = 0; j < total_values; j++)
 			{
-				dist = clusters[m].central_values[j] -point.values[j];
+				dist = clusters[m].central_values[j] -points[i].values[j];
 				sum += dist * dist;
 			}
     	    //remove the sqrt
@@ -657,7 +657,7 @@ int main(int argc, char *argv[])
 				id_cluster_center = m;
 			}
 		}
-		points[i].id_cluster = id_nearest_center;
+		points[i].id_cluster = id_cluster_center;
 	}
 	int iter = 2;
 	while(true)
@@ -673,7 +673,7 @@ int main(int argc, char *argv[])
 		//TBB IS SLOWER FOR LOOP 1
 		for(int i = 0; i < K; i++){
 			for(size_t j = 0 ; j < total_values;j++){
-				clusters[i].central_values_sum[j]=0
+				clusters[i].central_values_sums[j]=0;
 			}
             clusters[i].numPoints = 0;
         }
@@ -682,7 +682,7 @@ int main(int argc, char *argv[])
 		auto loop2_start = chrono::high_resolution_clock::now();
         for(int i = 0; i < total_points; i++){
             for(int j = 0; j < total_values; j++){
-                clusters[points[i].id_cluster].central_values_sum[j]= points[i].values[j];
+                clusters[points[i].id_cluster].central_values_sums[j]= points[i].values[j];
             }
             clusters[points[i].id_cluster].numPoints++;
         }
@@ -710,7 +710,7 @@ int main(int argc, char *argv[])
         for(int i = 0; i < K; i++){
             int total_points_cluster = clusters[i].numPoints;
             for(int j = 0; j < total_values; j++){
-                double sum = clusters[i].central_values_sum[j];
+                double sum = clusters[i].central_values_sums[j];
                 clusters[i].central_values[j] = sum / total_points_cluster;
             }
         }
@@ -740,7 +740,40 @@ int main(int argc, char *argv[])
 		// 		done = false;
 		// 	}
 		// }});
-		distence_kernel<<<number_of_blocks, threads_per_block>>>(points,total_points, K, total_values, clusters,done);
+		//distence_kernel<<<number_of_blocks, threads_per_block>>>(points,total_points, K, total_values, clusters,done);
+		for(int i = 0; i < total_points; i++)
+		{
+			int id_old_cluster = points[i].id_cluster;
+			double sum = 0.0, min_dist;
+			int id_cluster_center = 0;
+			for(int j = 0; j < total_values; j++)
+			{
+				sum += pow(clusters[0].central_values[j] -
+						   points[i].values[j], 2.0);
+			}
+			min_dist = sum;
+			for(int m = 1; m < K; m++)
+			{
+				double dist;
+				sum = 0.0;
+				for(int j = 0; j < total_values; j++)
+				{
+					dist = clusters[m].central_values[j] -points[i].values[j];
+					sum += dist * dist;
+				}
+    		    //remove the sqrt
+				if(sum < min_dist)
+				{
+					min_dist = sum;
+					id_cluster_center = m;
+				}
+			}
+			if(id_old_cluster != id_cluster_center)
+			{
+				points[i].id_cluster = id_cluster_center;
+				done = false;
+			}
+		}
 		// for(int i = 0; i < total_points; i++)
 		// {
 		// 	int id_old_cluster = points[i].getCluster();
@@ -764,7 +797,7 @@ int main(int argc, char *argv[])
 	// shows elements of clusters
 	for(int i = 0; i < K; i++)
 	{
-		int total_points_cluster =  clusters[i].getTotalPoints();
+		int total_points_cluster =  clusters[i].numPoints;
 		//cout << "Cluster " << clusters[i].getID() + 1 << endl;
 		// for(int j = 0; j < total_points_cluster; j++)
 		// {
