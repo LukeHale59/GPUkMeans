@@ -648,6 +648,16 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+	for(int i = 0; i < K; i++)
+	{
+		int total_points_cluster =  clusters[i].numPoints;
+		cout << "Cluster " << i + 1 << endl;
+		cout << "total_points_cluster " << total_points_cluster << endl;
+		cout << "Cluster values: ";
+		for(int j = 0; j < total_values; j++)
+			cout << clusters[i].central_values[j] << " ";
+		cout << endl;
+	}
     std::chrono::high_resolution_clock::time_point end_phase1 = chrono::high_resolution_clock::now();
     // associates each point to the nearest center
 	//auto loop_start = chrono::high_resolution_clock::now();
@@ -719,7 +729,7 @@ int main(int argc, char *argv[])
 		auto loop2_start = chrono::high_resolution_clock::now();
         for(int i = 0; i < total_points; i++){
             for(int j = 0; j < total_values; j++){
-                clusters[points[i].id_cluster].central_values_sums[j]= points[i].values[j];
+                clusters[points[i].id_cluster].central_values_sums[j] += points[i].values[j];
             }
             clusters[points[i].id_cluster].numPoints++;
         }
@@ -836,26 +846,11 @@ int main(int argc, char *argv[])
 	{
 		int total_points_cluster =  clusters[i].numPoints;
 		cout << "Cluster " << i + 1 << endl;
-		// for(int j = 0; j < total_points_cluster; j++)
-		// {
-		// 	cout << "Point " << clusters[i].getPoint(j).getID() + 1 << ": ";
-		// 	for(int p = 0; p < total_values; p++)
-		// 		cout << clusters[i].getPoint(j).getValue(p) << " ";
-		// 	string point_name = clusters[i].getPoint(j).getName();
-		// 	if(point_name != "")
-		// 		cout << "- " << point_name;
-		// 	cout << endl;
-		// }
 		cout << "total_points_cluster " << total_points_cluster << endl;
 		cout << "Cluster values: ";
 		for(int j = 0; j < total_values; j++)
 			cout << clusters[i].central_values[j] << " ";
 		cout << endl;
-        // cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
-        
-        // cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
-        
-        // cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";
 	}
 	            //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
         cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() <<endl;

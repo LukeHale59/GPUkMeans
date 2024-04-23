@@ -338,6 +338,18 @@ public:
 				}
 			}
 		}
+		// for(int i = 0; i < K; i++)
+		// {
+		// 	int total_points_cluster =  clusters[i].getTotalPoints();
+
+		// 	cout << "Cluster " << clusters[i].getID() + 1 << endl;
+		// 	cout << "total_points_cluster " << total_points_cluster << endl;
+		// 	cout << "Cluster values: ";
+
+		// 	for(int j = 0; j < total_values; j++)
+		// 		cout << clusters[i].getCentralValue(j) << " ";
+		// 	cout << endl;
+		// }
         std::chrono::high_resolution_clock::time_point end_phase1 = chrono::high_resolution_clock::now();
         
 		int iter = 1;
