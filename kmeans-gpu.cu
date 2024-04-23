@@ -547,6 +547,44 @@ void parseargs(int argc, char** argv, config_t& cfg) {
 // 	return id_cluster_center;
 // }
 
+struct PointStruct {
+    int id_cluster;
+    double* values;
+
+	PointStruct() : id_cluster(-1), values(nullptr) {}
+
+    // Constructor to initialize values array with a specified size
+    PointStruct(int size) : id_cluster(-1) {
+        values = new double[size];
+    }
+
+    // Destructor to free memory allocated for values array
+    ~PointStruct() {
+        delete[] values;
+    }
+};
+
+struct ClusterStruct {
+    int numPoints;
+    double* central_values;
+    double* central_values_sums;
+
+	ClusterStruct() : numPoints(0), central_values(nullptr), central_values_sums(nullptr) {}
+    // Constructor to initialize central_values and central_values_sums arrays with a specified size
+    ClusterStruct(int size) : numPoints(0){
+        numPoints = 0;
+        central_values = new double[size];
+        central_values_sums = new double[size];
+    }
+
+    // Destructor to free memory allocated for central_values and central_values_sums arrays
+    ~ClusterStruct() {
+        delete[] central_values;
+        delete[] central_values_sums;
+    }
+
+};
+
 int main(int argc, char *argv[])
 {
 	// Parse command line arguments using getopt()
@@ -563,29 +601,27 @@ int main(int argc, char *argv[])
 	}
     //Note making it an array instead of vector did not speed up
     //Point* points = new Point[total_points];
-	struct PointStruct{
-		int id_cluster;
-		double* values = new double[12];
-	};
-	PointStruct* points = new PointStruct[total_points];
+	// struct PointStruct{
+	// 	int id_cluster;
+	// 	double* values = new double[12];
+	// };
+	// Allocate memory for array of PointStruct objects
+	PointStruct* points = (PointStruct*)malloc(total_points * sizeof(PointStruct));
 
-	for(int i = 0; i < total_points; i++)
-	{
-		for(int j = 0; j < total_values; j++)
-		{
-			double value;
-			cin >> value;
-			points[i].values[j] = value;
-		}
+	// Initialize each PointStruct object
+	for(int i = 0; i < total_points; i++) {
+	    // Initialize the PointStruct object with the size of values array
+	    new (&points[i]) PointStruct(total_values);
+	
+	    // Fill in the values for each 'values' array
+	    for(int j = 0; j < total_values; j++) {
+	        double value;
+	        cin >> value;
+	        points[i].values[j] = value;
+	    }
 	}
 
-	struct ClusterStruct{
-		double* central_values = new double[12];
-    	double* central_values_sums = new double[12];
-    	int numPoints;
-	};
-	//KMeans kmeans(K, total_points, total_values, max_iterations);
-	ClusterStruct* clusters = new ClusterStruct[K];
+	ClusterStruct* clusters = (ClusterStruct*)malloc(K * sizeof(ClusterStruct(total_values)));
 	std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
     
 	if(K > total_points)
@@ -594,6 +630,7 @@ int main(int argc, char *argv[])
 	// choose K distinct values for the centers of the clusters
 	for(int i = 0; i < K; i++)
 	{
+		new (&clusters[i]) ClusterStruct(total_values);
 		while(true)
 		{
 			int index_point = rand() % total_points;
@@ -798,7 +835,7 @@ int main(int argc, char *argv[])
 	for(int i = 0; i < K; i++)
 	{
 		int total_points_cluster =  clusters[i].numPoints;
-		//cout << "Cluster " << clusters[i].getID() + 1 << endl;
+		cout << "Cluster " << i + 1 << endl;
 		// for(int j = 0; j < total_points_cluster; j++)
 		// {
 		// 	cout << "Point " << clusters[i].getPoint(j).getID() + 1 << ": ";
@@ -809,11 +846,11 @@ int main(int argc, char *argv[])
 		// 		cout << "- " << point_name;
 		// 	cout << endl;
 		// }
-		// cout << "total_points_cluster " << total_points_cluster << endl;
-		//cout << "Cluster values: ";
-		// for(int j = 0; j < total_values; j++)
-		// 	cout << clusters[i].getCentralValue(j) << " ";
-		// cout << "\n\n";
+		cout << "total_points_cluster " << total_points_cluster << endl;
+		cout << "Cluster values: ";
+		for(int j = 0; j < total_values; j++)
+			cout << clusters[i].central_values[j] << " ";
+		cout << endl;
         // cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
         
         // cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
@@ -821,7 +858,7 @@ int main(int argc, char *argv[])
         // cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";
 	}
 	            //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
-        cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count();
+        cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() <<endl;
         //cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
         
         //cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";
