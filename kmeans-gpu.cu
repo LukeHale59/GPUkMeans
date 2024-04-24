@@ -230,6 +230,7 @@ int main(int argc, char *argv[])
 	if(K > total_points)
 		return -1;
 	vector<int> prohibited_indexes;
+
 	// choose K distinct values for the centers of the clusters
 	for(int i = 0; i < K; i++)
 	{
@@ -251,6 +252,8 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+	// std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
+
 	//we now need to GPU
 
 	double* device_points;
@@ -258,7 +261,7 @@ int main(int argc, char *argv[])
 
     double* device_clusters;
     cudaMalloc(&device_clusters, sizeof(double) * K * total_values *2 + sizeof(double) * K);
-  
+
     int threads_per_block = 512;
     int deviceId;
     cudaGetDevice(&deviceId);
@@ -267,10 +270,8 @@ int main(int argc, char *argv[])
     cudaDeviceGetAttribute(&numberOfSMs, cudaDevAttrMultiProcessorCount, deviceId);
     
     int number_of_blocks = 32 * numberOfSMs;
-
 	cudaMemcpy(device_points, points, sizeof(double) * total_points * total_values + sizeof(double) * total_points, cudaMemcpyHostToDevice);
 	cudaMemcpy(device_clusters, clusters, sizeof(double) * K * total_values *2 + sizeof(double) * K, cudaMemcpyHostToDevice);
-		std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
 
 	distence_kernel_first<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values,  K);
 
@@ -383,12 +384,13 @@ int main(int argc, char *argv[])
 		}
 		iter++;
 	}
-	    std::chrono::high_resolution_clock::time_point end = chrono::high_resolution_clock::now();
+	std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
+
 
 	cudaMemcpy(points, device_points, sizeof(double) * total_points * total_values + sizeof(double) * total_points, cudaMemcpyDeviceToHost);
 	cudaMemcpy(clusters, device_clusters, sizeof(double) * K * total_values *2 + sizeof(double) * K, cudaMemcpyDeviceToHost);
 
-    // std::chrono::high_resolution_clock::time_point end = chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point end = chrono::high_resolution_clock::now();
 	// shows elements of clusters
 	for(int i = 0; i < K; i++)
 	{

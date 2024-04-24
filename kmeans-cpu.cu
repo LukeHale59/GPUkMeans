@@ -648,16 +648,6 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-	for(int i = 0; i < K; i++)
-	{
-		int total_points_cluster =  clusters[i].numPoints;
-		cout << "Cluster " << i + 1 << endl;
-		cout << "total_points_cluster " << total_points_cluster << endl;
-		cout << "Cluster values: ";
-		for(int j = 0; j < total_values; j++)
-			cout << clusters[i].central_values[j] << " ";
-		cout << endl;
-	}
     std::chrono::high_resolution_clock::time_point end_phase1 = chrono::high_resolution_clock::now();
     // associates each point to the nearest center
 	//auto loop_start = chrono::high_resolution_clock::now();
@@ -855,7 +845,7 @@ int main(int argc, char *argv[])
 		cerr << iter << endl;
 
 	            //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
-        cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() <<endl;
+        cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count() <<endl;
         //cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
         
         //cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";
