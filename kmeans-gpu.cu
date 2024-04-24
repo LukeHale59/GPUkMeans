@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-	// std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
+	std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
 
 	//we now need to GPU
 
@@ -262,6 +262,7 @@ int main(int argc, char *argv[])
     double* device_clusters;
     cudaMalloc(&device_clusters, sizeof(double) * K * total_values *2 + sizeof(double) * K);
 
+	std::chrono::high_resolution_clock::time_point afterCudaMalloc = chrono::high_resolution_clock::now();
     int threads_per_block = 512;
     int deviceId;
     cudaGetDevice(&deviceId);
@@ -273,108 +274,26 @@ int main(int argc, char *argv[])
 	cudaMemcpy(device_points, points, sizeof(double) * total_points * total_values + sizeof(double) * total_points, cudaMemcpyHostToDevice);
 	cudaMemcpy(device_clusters, clusters, sizeof(double) * K * total_values *2 + sizeof(double) * K, cudaMemcpyHostToDevice);
 
+	std::chrono::high_resolution_clock::time_point afterCudaCopyToDevice = chrono::high_resolution_clock::now();
+
 	distence_kernel_first<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values,  K);
 
-	
-    //assign each point to the correct cluster
-	// for(int i = 0; i < total_points; i++)
-	// {
-	// 	double sum = 0.0, min_dist;
-	// 	int id_cluster_center = 0;
-	// 	for(int j = 0; j < total_values; j++)
-	// 	{
-	// 		sum += pow(clusters[1+j] -
-	// 				   points[i*(total_values+1) +j + 1], 2.0);
-	// 	}
-	// 	min_dist = sum;
-	// 	for(int m = 1; m < K; m++)
-	// 	{
-	// 		double dist;
-	// 		sum = 0.0;
-	// 		for(int j = 0; j < total_values; j++)
-	// 		{
-	// 			dist = clusters[m*(total_values*2 +1) +j + 1] -points[i*(total_values+1) +j + 1];
-	// 			sum += dist * dist;
-	// 		}
-    // 	    //remove the sqrt
-	// 		if(sum < min_dist)
-	// 		{
-	// 			min_dist = sum;
-	// 			id_cluster_center = m;
-	// 		}
-	// 	}
-	// 	points[i*(total_values+1)] = id_cluster_center;
-	// }
 	int iter = 2;
 	while(true)
 	{
 		bool done = true;
-		//clear each cluster value store
-		// for(int i = 0; i < K; i++){
-		// 	for(size_t j = 0 ; j < total_values;j++){
-		// 		clusters[i*(total_values*2 +1) +j + 1+ total_values]=0;
-		// 	}
-        //     clusters[i * (total_values*2 +1)] = 0;
-        // }
 
+		//clear each cluster value store
 		clear_cluster_kernel<<<number_of_blocks, threads_per_block>>>(device_clusters,total_values,  K);
 
 		//get the sum of all points in the cluster
-        // for(int i = 0; i < total_points; i++){
-		// 	int clusterID = (int)points[i*(total_values+1)];
-        //     for(int j = 0; j < total_values; j++){
-		// 		clusters[clusterID*(total_values*2 +1) +j + 1+ total_values] += points[i*(total_values+1) +j + 1];
-        //     }
-        //     clusters[clusterID * (total_values*2 +1)]++;
-        // }
-
 		calculate_center_kernel<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values);
+
 		//get the new centers for each cluster
-        // for(int i = 0; i < K; i++){
-        //     int total_points_cluster = clusters[i * (total_values*2 +1)];
-        //     for(int j = 0; j < total_values; j++){
-        //         double sum = clusters[i*(total_values*2 +1) +j + 1+ total_values];
-        //         clusters[i*(total_values*2 +1) +j + 1] = sum / total_points_cluster;
-        //     }
-        // }
 		get_center_kernel<<<number_of_blocks, threads_per_block>>>(device_clusters,total_values,  K);
 
 
 		//assign each point to nearest cluster
-		// for(int i = 0; i < total_points; i++)
-		// {
-		// 	int id_old_cluster = points[i*(total_values+1)];
-		// 	double sum = 0.0, min_dist;
-		// 	int id_cluster_center = 0;
-		// 	for(int j = 0; j < total_values; j++)
-		// 	{
-		// 		sum += pow(clusters[1+j] -
-		// 			   points[i*(total_values+1) +j + 1], 2.0);
-		// 	}
-		// 	min_dist = sum;
-		// 	for(int m = 1; m < K; m++)
-		// 	{
-		// 		double dist;
-		// 		sum = 0.0;
-		// 		for(int j = 0; j < total_values; j++)
-		// 		{
-		// 			dist = clusters[m*(total_values*2 +1) +j + 1] -points[i*(total_values+1) +j + 1];
-		// 			sum += dist * dist;
-		// 		}
-    	// 	    //remove the sqrt
-		// 		if(sum < min_dist)
-		// 		{
-		// 			min_dist = sum;
-		// 			id_cluster_center = m;
-		// 		}
-		// 	}
-		// 	if(id_old_cluster != id_cluster_center)
-		// 	{
-		// 		points[i*(total_values+1)] = id_cluster_center;
-		// 		done = false;
-		// 	}
-		// }
-
 		distence_kernel_main<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values,  K);
 		
 		if( iter == 10)
@@ -384,8 +303,8 @@ int main(int argc, char *argv[])
 		}
 		iter++;
 	}
-	std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
 
+	std::chrono::high_resolution_clock::time_point afterKernels = chrono::high_resolution_clock::now();
 
 	cudaMemcpy(points, device_points, sizeof(double) * total_points * total_values + sizeof(double) * total_points, cudaMemcpyDeviceToHost);
 	cudaMemcpy(clusters, device_clusters, sizeof(double) * K * total_values *2 + sizeof(double) * K, cudaMemcpyDeviceToHost);
@@ -402,7 +321,19 @@ int main(int argc, char *argv[])
 			cout << clusters[i*(total_values*2 +1) +j + 1] << " ";
 		cout << endl;
 	}
-    cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() <<endl;
-        
+    cout << "Time for Cuda Malloc :" <<std::chrono::duration_cast<std::chrono::milliseconds>(afterCudaMalloc-begin).count() <<" ms"<<endl;
+	cout << "Time for Cuda Mem Copy Host To Device :" <<std::chrono::duration_cast<std::chrono::milliseconds>(afterCudaCopyToDevice-afterCudaMalloc).count() <<" ms"<<endl;
+	//this is in micro seconds because it is so fast
+	double us = (double) std::chrono::duration_cast<std::chrono::microseconds>(afterKernels-afterCudaCopyToDevice).count();
+	double ms = us/1000;
+	cout << "Time for Kernels (k-means) :" <<ms <<" ms"<<endl;
+	cout << "Time for Cuda Mem Copy Device to Host :" <<std::chrono::duration_cast<std::chrono::milliseconds>(end-afterKernels).count() <<" ms"<<endl;
+	cout << "Total Time :" <<std::chrono::duration_cast<std::chrono::milliseconds>(end-begin).count() <<" ms"<<endl;
+	//free the memory!
+	free(points);
+	free(clusters);
+    //CUDA FREE
+    cudaFree( device_points );
+    cudaFree( device_clusters );    
 	return 0;
 }

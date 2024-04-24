@@ -18,6 +18,6 @@ struct config_t {
     int seed2;
 
     // simple constructor
-    config_t() : clusters(80), seed(0) , threads(-1),total_points(-1){ }
+    config_t() : clusters(10), seed(0) , threads(-1),total_points(-1){ }
 
 };

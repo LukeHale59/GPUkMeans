@@ -842,13 +842,12 @@ int main(int argc, char *argv[])
 			cout << clusters[i].central_values[j] << " ";
 		cout << endl;
 	}
-		cerr << iter << endl;
-
-	            //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
-        cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count() <<endl;
-        //cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
-        
-        //cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";
+	cerr << "Iterations: " << iter << endl;
+	        //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
+    cout <<"Time for Serial: "<<std::chrono::duration_cast<std::chrono::milliseconds>(end-end_phase1).count() << " ms" <<endl;
+    //cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
+    
+    //cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";
 
 	return 0;
 }
