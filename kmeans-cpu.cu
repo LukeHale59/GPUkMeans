@@ -852,6 +852,8 @@ int main(int argc, char *argv[])
 			cout << clusters[i].central_values[j] << " ";
 		cout << endl;
 	}
+		cerr << iter << endl;
+
 	            //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
         cout <<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count() <<endl;
         //cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
