@@ -35,13 +35,13 @@ void parseargs(int argc, char** argv, config_t& cfg) {
 
 struct PointStruct {
     int id_cluster;
-    double* values;
+    float* values;
 
 	PointStruct() : id_cluster(-1), values(nullptr) {}
 
     // Constructor to initialize values array with a specified size
     PointStruct(int size) : id_cluster(-1) {
-        values = new double[size];
+        values = new float[size];
     }
 
     // Destructor to free memory allocated for values array
@@ -52,15 +52,15 @@ struct PointStruct {
 
 struct ClusterStruct {
     int numPoints;
-    double* central_values;
-    double* central_values_sums;
+    float* central_values;
+    float* central_values_sums;
 
 	ClusterStruct() : numPoints(0), central_values(nullptr), central_values_sums(nullptr) {}
     // Constructor to initialize central_values and central_values_sums arrays with a specified size
     ClusterStruct(int size) : numPoints(0){
         numPoints = 0;
-        central_values = new double[size];
-        central_values_sums = new double[size];
+        central_values = new float[size];
+        central_values_sums = new float[size];
     }
 
     // Destructor to free memory allocated for central_values and central_values_sums arrays
@@ -71,14 +71,14 @@ struct ClusterStruct {
 
 };
 
-__global__ void distence_kernel_first(double* points,double* clusters, int total_points, int total_values, int K)
+__global__ void distence_kernel_first(float* points,float* clusters, int total_points, int total_values, int K)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = gridDim.x * blockDim.x;
     //increment by stride
 	for(int i = idx; i < total_points; i+= stride)
 	{
-			double sum = 0.0, min_dist;
+			float sum = 0.0, min_dist;
 			int id_cluster_center = 0;
 			for(int j = 0; j < total_values; j++)
 			{
@@ -88,7 +88,7 @@ __global__ void distence_kernel_first(double* points,double* clusters, int total
 			min_dist = sum;
 			for(int m = 1; m < K; m++)
 			{
-				double dist;
+				float dist;
 				sum = 0.0;
 				for(int j = 0; j < total_values; j++)
 				{
@@ -106,7 +106,7 @@ __global__ void distence_kernel_first(double* points,double* clusters, int total
 	}
 }
 
-__global__ void clear_cluster_kernel(double* clusters, int total_values, int K)
+__global__ void clear_cluster_kernel(float* clusters, int total_values, int K)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = gridDim.x * blockDim.x;
@@ -120,7 +120,7 @@ __global__ void clear_cluster_kernel(double* clusters, int total_values, int K)
     }
 }
 
-__global__ void calculate_center_kernel(double* points,double* clusters, int total_points, int total_values)
+__global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     //int stride = gridDim.x * blockDim.x;
@@ -136,7 +136,7 @@ __global__ void calculate_center_kernel(double* points,double* clusters, int tot
 	}
 }
 
-__global__ void get_center_kernel(double* clusters, int total_values, int K)
+__global__ void get_center_kernel(float* clusters, int total_values, int K)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = gridDim.x * blockDim.x;
@@ -145,13 +145,13 @@ __global__ void get_center_kernel(double* clusters, int total_values, int K)
 	for(int i = idx; i < K; i += stride){
 		int total_points_cluster = clusters[i * (total_values*2 +1)];
         for(int j = 0; j < total_values; j++){
-            double sum = clusters[i*(total_values*2 +1) +j + 1+ total_values];
+            float sum = clusters[i*(total_values*2 +1) +j + 1+ total_values];
             clusters[i*(total_values*2 +1) +j + 1] = sum / total_points_cluster;
         }
     }
 }
 
-__global__ void distence_kernel_main(double* points,double* clusters, int total_points, int total_values, int K)
+__global__ void distence_kernel_main(float* points,float* clusters, int total_points, int total_values, int K)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = gridDim.x * blockDim.x;
@@ -159,7 +159,7 @@ __global__ void distence_kernel_main(double* points,double* clusters, int total_
 	for(int i = idx; i < total_points; i+= stride)
 	{
 		int id_old_cluster = points[i*(total_values+1)];
-		double sum = 0.0, min_dist;
+		float sum = 0.0, min_dist;
 		int id_cluster_center = 0;
 		for(int j = 0; j < total_values; j++)
 		{
@@ -169,7 +169,7 @@ __global__ void distence_kernel_main(double* points,double* clusters, int total_
 		min_dist = sum;
 		for(int m = 1; m < K; m++)
 		{
-			double dist;
+			float dist;
 			sum = 0.0;
 			for(int j = 0; j < total_values; j++)
 			{
@@ -205,17 +205,25 @@ int main(int argc, char *argv[])
 	if(config.total_points != -1){
 		total_points = config.total_points;
 	}
+
+	//Once we know how big GPU memory is we can
+	//cuda malloc as these calls are async and can be done while we are reading the data from file
+	float* device_points;
+    cudaMalloc(&device_points, sizeof(float) * total_points * total_values + sizeof(float) * total_points);
+
+    float* device_clusters;
+    cudaMalloc(&device_clusters, sizeof(float) * K * total_values *2 + sizeof(float) * K);
     
 	//PointStruct* points = (PointStruct*)malloc(total_points * sizeof(PointStruct));
 
-	double* points = (double*)malloc(sizeof(double) * total_points * total_values + sizeof(double) * total_points);
+	float* points = (float*)malloc(sizeof(float) * total_points * total_values + sizeof(float) * total_points);
 
 	// Initialize each PointStruct object
 	for(int i = 0; i < total_points; i++) {
 	    // Initialize the PointStruct object with the size of values array
 	    // Fill in the values for each 'values' array
 	    for(int j = 0; j < total_values; j++) {
-	        double value;
+	        float value;
 	        cin >> value;
 	        points[i*(total_values+1) +j + 1] = value;
 	    }
@@ -223,7 +231,7 @@ int main(int argc, char *argv[])
 
 	//ClusterStruct* clusters = (ClusterStruct*)malloc(K * sizeof(ClusterStruct(total_values)));
 	//values first, sums seconds
-	double* clusters = (double*)malloc(sizeof(double) * K * total_values *2 + sizeof(double) * K);
+	float* clusters = (float*)malloc(sizeof(float) * K * total_values *2 + sizeof(float) * K);
 
 	// std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
     
@@ -252,17 +260,9 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-	std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
-
 	//we now need to GPU
 
-	double* device_points;
-    cudaMalloc(&device_points, sizeof(double) * total_points * total_values + sizeof(double) * total_points);
-
-    double* device_clusters;
-    cudaMalloc(&device_clusters, sizeof(double) * K * total_values *2 + sizeof(double) * K);
-
-	std::chrono::high_resolution_clock::time_point afterCudaMalloc = chrono::high_resolution_clock::now();
+	std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
     int threads_per_block = 512;
     int deviceId;
     cudaGetDevice(&deviceId);
@@ -271,11 +271,12 @@ int main(int argc, char *argv[])
     cudaDeviceGetAttribute(&numberOfSMs, cudaDevAttrMultiProcessorCount, deviceId);
     
     int number_of_blocks = 32 * numberOfSMs;
-	cudaMemcpy(device_points, points, sizeof(double) * total_points * total_values + sizeof(double) * total_points, cudaMemcpyHostToDevice);
-	cudaMemcpy(device_clusters, clusters, sizeof(double) * K * total_values *2 + sizeof(double) * K, cudaMemcpyHostToDevice);
+	cudaMemcpy(device_points, points, sizeof(float) * total_points * total_values + sizeof(float) * total_points, cudaMemcpyHostToDevice);
+	cudaMemcpy(device_clusters, clusters, sizeof(float) * K * total_values *2 + sizeof(float) * K, cudaMemcpyHostToDevice);
 
 	std::chrono::high_resolution_clock::time_point afterCudaCopyToDevice = chrono::high_resolution_clock::now();
 
+	//assign each point to nearest cluster
 	distence_kernel_first<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values,  K);
 
 	int iter = 2;
@@ -287,11 +288,10 @@ int main(int argc, char *argv[])
 		clear_cluster_kernel<<<number_of_blocks, threads_per_block>>>(device_clusters,total_values,  K);
 
 		//get the sum of all points in the cluster
-		calculate_center_kernel<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values);
+		sum_center_kernel<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values);
 
 		//get the new centers for each cluster
 		get_center_kernel<<<number_of_blocks, threads_per_block>>>(device_clusters,total_values,  K);
-
 
 		//assign each point to nearest cluster
 		distence_kernel_main<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values,  K);
@@ -303,13 +303,14 @@ int main(int argc, char *argv[])
 		}
 		iter++;
 	}
-
+	cudaDeviceSynchronize();
 	std::chrono::high_resolution_clock::time_point afterKernels = chrono::high_resolution_clock::now();
 
-	cudaMemcpy(points, device_points, sizeof(double) * total_points * total_values + sizeof(double) * total_points, cudaMemcpyDeviceToHost);
-	cudaMemcpy(clusters, device_clusters, sizeof(double) * K * total_values *2 + sizeof(double) * K, cudaMemcpyDeviceToHost);
+	cudaMemcpy(clusters, device_clusters, sizeof(float) * K * total_values *2 + sizeof(float) * K, cudaMemcpyDeviceToHost);
+	cudaMemcpy(points, device_points, sizeof(float) * total_points * total_values + sizeof(float) * total_points, cudaMemcpyDeviceToHost);
 
     std::chrono::high_resolution_clock::time_point end = chrono::high_resolution_clock::now();
+
 	// shows elements of clusters
 	for(int i = 0; i < K; i++)
 	{
@@ -321,11 +322,10 @@ int main(int argc, char *argv[])
 			cout << clusters[i*(total_values*2 +1) +j + 1] << " ";
 		cout << endl;
 	}
-    cout << "Time for Cuda Malloc :" <<std::chrono::duration_cast<std::chrono::milliseconds>(afterCudaMalloc-begin).count() <<" ms"<<endl;
-	cout << "Time for Cuda Mem Copy Host To Device :" <<std::chrono::duration_cast<std::chrono::milliseconds>(afterCudaCopyToDevice-afterCudaMalloc).count() <<" ms"<<endl;
+	cout << "Time for Cuda Mem Copy Host To Device :" <<std::chrono::duration_cast<std::chrono::milliseconds>(afterCudaCopyToDevice-begin).count() <<" ms"<<endl;
 	//this is in micro seconds because it is so fast
-	double us = (double) std::chrono::duration_cast<std::chrono::microseconds>(afterKernels-afterCudaCopyToDevice).count();
-	double ms = us/1000;
+	float us = (float) std::chrono::duration_cast<std::chrono::microseconds>(afterKernels-afterCudaCopyToDevice).count();
+	float ms = us/1000;
 	cout << "Time for Kernels (k-means) :" <<ms <<" ms"<<endl;
 	cout << "Time for Cuda Mem Copy Device to Host :" <<std::chrono::duration_cast<std::chrono::milliseconds>(end-afterKernels).count() <<" ms"<<endl;
 	cout << "Total Time :" <<std::chrono::duration_cast<std::chrono::milliseconds>(end-begin).count() <<" ms"<<endl;
