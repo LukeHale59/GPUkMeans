@@ -1,5 +1,5 @@
-CXX := nvc++
-CXXFLAGS := -fast
+CXX := nvc++#nvcc
+CXXFLAGS := -fast #-O3 -std=c++11
 
 all: p2
 

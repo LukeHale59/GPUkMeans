@@ -151,6 +151,70 @@ __global__ void sum_center_kernel(float* points,float* clusters, int total_point
 	}
 }
 
+//reduce version
+// __global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values, int K)
+// {
+// 	extern __shared__ float clustersLocal[];
+//     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//     int stride = gridDim.x * blockDim.x;
+// 	unsigned int tid = threadIdx.x;
+// 	//this needs to be fixed
+//     for(int i = idx; i < total_points; i+= stride){
+// 		int clusterID = (int)points[i*(total_values+1)];
+//         for(int j = 0; j < total_values; j++){
+// 			clustersLocal[clusterID*(total_values +1) +j + 1 +((K * total_values+ K)*stride )] += points[i*(total_values+1) +j + 1];
+//        	}
+//     	clustersLocal[clusterID*(total_values +1) +((K * total_values+ K)*stride )]++;
+// 	}
+// 	__syncthreads();
+// 	for (unsigned int s=blockDim.x/2; s>0; s>>=1) {
+// 		if (tid < s) {
+// 			for(int i = 0 ; i < K;i++){
+// 				for(int j = 0; j < total_values; j++){
+// 					clustersLocal[i*(total_values +1) +j + 1 +((K * total_values+ K)*tid )] += clustersLocal[i*(total_values +1) +j + 1 +((K * total_values+ K)*(tid+2) )];
+//        			}
+// 				clustersLocal[i*(total_values +1) +((K * total_values+ K)*tid )] += clustersLocal[i*(total_values +1) +((K * total_values+ K)*(tid+2) )];
+// 			}
+// 		}
+// 		__syncthreads();
+// 	}
+// 	if(tid == 0){
+// 		for(int i = 0 ; i < K;i++){
+// 			for(int j = 0; j < total_values; j++){
+// 				clusters[i*(total_values*2 +1) +j + 1+ total_values] = clustersLocal[i*(total_values +1) +j + 1];
+//     		}
+// 		}
+// 	}
+// }
+
+// template <unsigned int blockSize>
+// __device__ void warpReduce(volatile int *sdata, unsigned int tid) {
+// 	if (blockSize >= 64) sdata[tid] += sdata[tid + 32];
+// 	if (blockSize >= 32) sdata[tid] += sdata[tid + 16];
+// 	if (blockSize >= 16) sdata[tid] += sdata[tid + 8];
+// 	if (blockSize >= 8) sdata[tid] += sdata[tid + 4];
+// 	if (blockSize >= 4) sdata[tid] += sdata[tid + 2];
+// 	if (blockSize >= 2) sdata[tid] += sdata[tid + 1];
+// }
+
+
+// template <unsigned int blockSize>
+// __global__ void reduce6(int *g_idata, int *g_odata, unsigned int n) {
+// 	extern __shared__ int sdata[];
+// 	unsigned int tid = threadIdx.x;
+// 	unsigned int i = blockIdx.x*(blockSize*2) + tid;
+// 	unsigned int gridSize = blockSize*2*gridDim.x;
+// 	sdata[tid] = 0;
+// 	while (i < n) { sdata[tid] += g_idata[i] + g_idata[i+blockSize]; i += gridSize; }
+// 	__syncthreads();
+// 	if (blockSize >= 512) { if (tid < 256) { sdata[tid] += sdata[tid + 256]; } __syncthreads(); }
+// 	if (blockSize >= 256) { if (tid < 128) { sdata[tid] += sdata[tid + 128]; } __syncthreads(); }
+// 	if (blockSize >= 128) { if (tid < 64) { sdata[tid] += sdata[tid + 64]; } __syncthreads(); }
+// 	if (tid < 32) warpReduce(sdata, tid);
+// 	if (tid == 0) g_odata[blockIdx.x] = sdata[0];
+// }
+
+
 __global__ void get_center_kernel(float* clusters, int total_values, int K)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
