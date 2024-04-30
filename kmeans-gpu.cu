@@ -120,19 +120,34 @@ __global__ void clear_cluster_kernel(float* clusters, int total_values, int K)
     }
 }
 
+//serial version
+// __global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values)
+// {
+//     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//     //int stride = gridDim.x * blockDim.x;
+// 	//this needs to be fixed
+// 	if(idx == 0){
+//     	for(int i = 0; i < total_points; i++){
+// 			int clusterID = (int)points[i*(total_values+1)];
+//     	    for(int j = 0; j < total_values; j++){
+// 				clusters[clusterID*(total_values*2 +1) +j + 1+ total_values] += points[i*(total_values+1) +j + 1];
+//     	   	}
+//     	clusters[clusterID * (total_values*2 +1)]++;
+// 		}
+// 	}
+// }
+
+//atomic version
 __global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    //int stride = gridDim.x * blockDim.x;
-	//this needs to be fixed
-	if(idx == 0){
-    	for(int i = 0; i < total_points; i++){
-			int clusterID = (int)points[i*(total_values+1)];
-    	    for(int j = 0; j < total_values; j++){
-				clusters[clusterID*(total_values*2 +1) +j + 1+ total_values] += points[i*(total_values+1) +j + 1];
-    	   	}
-    	clusters[clusterID * (total_values*2 +1)]++;
-		}
+    int stride = gridDim.x * blockDim.x;
+    for(int i = idx; i < total_points; i+= stride){
+		int clusterID = (int)points[i*(total_values+1)];
+        for(int j = 0; j < total_values; j++){
+			atomicAdd(&clusters[clusterID * (total_values * 2 + 1) + j + 1 + total_values], points[i * (total_values + 1) + j + 1]);
+       	}
+    atomicAdd(&clusters[clusterID * (total_values*2 +1)],1);
 	}
 }
 
