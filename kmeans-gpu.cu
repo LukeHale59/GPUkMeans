@@ -71,6 +71,68 @@ struct ClusterStruct {
 
 };
 
+__global__ void KMeans_kernel(float* points,float* clusters, int total_points, int total_values, int K){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = gridDim.x * blockDim.x;
+
+	for(int i = idx; i < K; i += stride){
+		for(size_t j = 0 ; j < total_values;j++){
+			clusters[i*(total_values*2 +1) +j + 1+ total_values]=0;
+		}
+    	clusters[i * (total_values*2 +1)] = 0;
+    }
+	__syncthreads();
+	//get the sum of all points in the cluster
+	for(int i = idx; i < total_points; i+= stride){
+		int clusterID = (int)points[i*(total_values+1)];
+    	for(int j = 0; j < total_values; j++){
+			atomicAdd(&clusters[clusterID * (total_values * 2 + 1) + j + 1 + total_values], points[i * (total_values + 1) + j + 1]);
+    	}
+    	atomicAdd(&clusters[clusterID * (total_values*2 +1)],1);
+	}
+	__syncthreads();
+	//get the new centers for each cluster
+	for(int i = idx; i < K; i += stride){
+		int total_points_cluster = clusters[i * (total_values*2 +1)];
+        for(int j = 0; j < total_values; j++){
+            float sum = clusters[i*(total_values*2 +1) +j + 1+ total_values];
+            clusters[i*(total_values*2 +1) +j + 1] = sum / total_points_cluster;
+        }
+    }	
+	__syncthreads();
+	//assign each point to nearest cluster
+	for(int i = idx; i < total_points; i+= stride)
+	{
+		int id_old_cluster = points[i*(total_values+1)];
+		float sum = 0.0, min_dist;
+		int id_cluster_center = 0;
+		for(int j = 0; j < total_values; j++)
+		{
+			sum += pow(clusters[1+j] -
+				   points[i*(total_values+1) +j + 1], 2.0);
+		}
+		min_dist = sum;
+		for(int m = 1; m < K; m++)
+		{
+			float dist;
+			sum = 0.0;
+			for(int j = 0; j < total_values; j++)
+			{
+				dist = clusters[m*(total_values*2 +1) +j + 1] -points[i*(total_values+1) +j + 1];
+				sum += dist * dist;
+			}
+    	    //remove the sqrt
+			if(sum < min_dist)
+			{
+				min_dist = sum;
+				id_cluster_center = m;
+			}
+		}
+		points[i*(total_values+1)] = id_cluster_center;
+	}
+
+}
+
 __global__ void distence_kernel_first(float* points,float* clusters, int total_points, int total_values, int K)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -104,21 +166,22 @@ __global__ void distence_kernel_first(float* points,float* clusters, int total_p
 			}
 			points[i*(total_values+1)] = id_cluster_center;
 	}
+
 }
 
-__global__ void clear_cluster_kernel(float* clusters, int total_values, int K)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = gridDim.x * blockDim.x;
-    //increment by stride
-			//clear each cluster value store
-	for(int i = idx; i < K; i += stride){
-		for(size_t j = 0 ; j < total_values;j++){
-			clusters[i*(total_values*2 +1) +j + 1+ total_values]=0;
-		}
-        clusters[i * (total_values*2 +1)] = 0;
-    }
-}
+// __global__ void clear_cluster_kernel(float* clusters, int total_values, int K)
+// {
+//     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//     int stride = gridDim.x * blockDim.x;
+//     //increment by stride
+// 			//clear each cluster value store
+// 	for(int i = idx; i < K; i += stride){
+// 		for(size_t j = 0 ; j < total_values;j++){
+// 			clusters[i*(total_values*2 +1) +j + 1+ total_values]=0;
+// 		}
+//         clusters[i * (total_values*2 +1)] = 0;
+//     }
+// }
 
 //serial version
 // __global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values)
@@ -137,19 +200,20 @@ __global__ void clear_cluster_kernel(float* clusters, int total_values, int K)
 // 	}
 // }
 
+
 //atomic version
-__global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = gridDim.x * blockDim.x;
-    for(int i = idx; i < total_points; i+= stride){
-		int clusterID = (int)points[i*(total_values+1)];
-        for(int j = 0; j < total_values; j++){
-			atomicAdd(&clusters[clusterID * (total_values * 2 + 1) + j + 1 + total_values], points[i * (total_values + 1) + j + 1]);
-       	}
-    atomicAdd(&clusters[clusterID * (total_values*2 +1)],1);
-	}
-}
+// __global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values)
+// {
+//     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//     int stride = gridDim.x * blockDim.x;
+//     for(int i = idx; i < total_points; i+= stride){
+// 		int clusterID = (int)points[i*(total_values+1)];
+//         for(int j = 0; j < total_values; j++){
+// 			atomicAdd(&clusters[clusterID * (total_values * 2 + 1) + j + 1 + total_values], points[i * (total_values + 1) + j + 1]);
+//        	}
+//     atomicAdd(&clusters[clusterID * (total_values*2 +1)],1);
+// 	}
+// }
 
 //reduce version
 // __global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values, int K)
@@ -215,60 +279,60 @@ __global__ void sum_center_kernel(float* points,float* clusters, int total_point
 // }
 
 
-__global__ void get_center_kernel(float* clusters, int total_values, int K)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = gridDim.x * blockDim.x;
-    //increment by stride
-			//clear each cluster value store
-	for(int i = idx; i < K; i += stride){
-		int total_points_cluster = clusters[i * (total_values*2 +1)];
-        for(int j = 0; j < total_values; j++){
-            float sum = clusters[i*(total_values*2 +1) +j + 1+ total_values];
-            clusters[i*(total_values*2 +1) +j + 1] = sum / total_points_cluster;
-        }
-    }
-}
+// __global__ void get_center_kernel(float* clusters, int total_values, int K)
+// {
+//     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//     int stride = gridDim.x * blockDim.x;
+//     //increment by stride
+// 			//clear each cluster value store
+// 	for(int i = idx; i < K; i += stride){
+// 		int total_points_cluster = clusters[i * (total_values*2 +1)];
+//         for(int j = 0; j < total_values; j++){
+//             float sum = clusters[i*(total_values*2 +1) +j + 1+ total_values];
+//             clusters[i*(total_values*2 +1) +j + 1] = sum / total_points_cluster;
+//         }
+//     }
+// }
 
-__global__ void distence_kernel_main(float* points,float* clusters, int total_points, int total_values, int K)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = gridDim.x * blockDim.x;
-    //increment by stride
-	for(int i = idx; i < total_points; i+= stride)
-	{
-		int id_old_cluster = points[i*(total_values+1)];
-		float sum = 0.0, min_dist;
-		int id_cluster_center = 0;
-		for(int j = 0; j < total_values; j++)
-		{
-			sum += pow(clusters[1+j] -
-				   points[i*(total_values+1) +j + 1], 2.0);
-		}
-		min_dist = sum;
-		for(int m = 1; m < K; m++)
-		{
-			float dist;
-			sum = 0.0;
-			for(int j = 0; j < total_values; j++)
-			{
-				dist = clusters[m*(total_values*2 +1) +j + 1] -points[i*(total_values+1) +j + 1];
-				sum += dist * dist;
-			}
-    	    //remove the sqrt
-			if(sum < min_dist)
-			{
-				min_dist = sum;
-				id_cluster_center = m;
-			}
-		}
-		if(id_old_cluster != id_cluster_center)
-		{
-			points[i*(total_values+1)] = id_cluster_center;
-			//done = false;
-		}
-	}
-}
+// __global__ void distence_kernel_main(float* points,float* clusters, int total_points, int total_values, int K)
+// {
+//     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//     int stride = gridDim.x * blockDim.x;
+//     //increment by stride
+// 	for(int i = idx; i < total_points; i+= stride)
+// 	{
+// 		int id_old_cluster = points[i*(total_values+1)];
+// 		float sum = 0.0, min_dist;
+// 		int id_cluster_center = 0;
+// 		for(int j = 0; j < total_values; j++)
+// 		{
+// 			sum += pow(clusters[1+j] -
+// 				   points[i*(total_values+1) +j + 1], 2.0);
+// 		}
+// 		min_dist = sum;
+// 		for(int m = 1; m < K; m++)
+// 		{
+// 			float dist;
+// 			sum = 0.0;
+// 			for(int j = 0; j < total_values; j++)
+// 			{
+// 				dist = clusters[m*(total_values*2 +1) +j + 1] -points[i*(total_values+1) +j + 1];
+// 				sum += dist * dist;
+// 			}
+//     	    //remove the sqrt
+// 			if(sum < min_dist)
+// 			{
+// 				min_dist = sum;
+// 				id_cluster_center = m;
+// 			}
+// 		}
+// 		if(id_old_cluster != id_cluster_center)
+// 		{
+// 			points[i*(total_values+1)] = id_cluster_center;
+// 			//done = false;
+// 		}
+// 	}
+// }
 
 int main(int argc, char *argv[])
 {
@@ -358,30 +422,34 @@ int main(int argc, char *argv[])
 	//assign each point to nearest cluster
 	distence_kernel_first<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values,  K);
 
-	int iter = 2;
-	while(true)
-	{
-		bool done = true;
-
-		//clear each cluster value store
-		clear_cluster_kernel<<<number_of_blocks, threads_per_block>>>(device_clusters,total_values,  K);
-
-		//get the sum of all points in the cluster
-		sum_center_kernel<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values);
-
-		//get the new centers for each cluster
-		get_center_kernel<<<number_of_blocks, threads_per_block>>>(device_clusters,total_values,  K);
-
-		//assign each point to nearest cluster
-		distence_kernel_main<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values,  K);
-		
-		if( iter == 10)
-		{
-			//cout << "Break in iteration " << iter << "\n\n";
-			break;
-		}
-		iter++;
+	for(int iter =2 ; iter < 10;iter++){
+		KMeans_kernel<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values,  K);
 	}
+
+	// int iter = 2;
+	// while(true)
+	// {
+	// 	bool done = true;
+
+	// 	//clear each cluster value store
+	// 	clear_cluster_kernel<<<number_of_blocks, threads_per_block>>>(device_clusters,total_values,  K);
+
+	// 	//get the sum of all points in the cluster
+	// 	sum_center_kernel<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values);
+
+	// 	//get the new centers for each cluster
+	// 	get_center_kernel<<<number_of_blocks, threads_per_block>>>(device_clusters,total_values,  K);
+
+	// 	//assign each point to nearest cluster
+	// 	distence_kernel_main<<<number_of_blocks, threads_per_block>>>(device_points,device_clusters,total_points,total_values,  K);
+		
+	// 	if( iter == 10)
+	// 	{
+	// 		//cout << "Break in iteration " << iter << "\n\n";
+	// 		break;
+	// 	}
+	// 	iter++;
+	// }
 	cudaDeviceSynchronize();
 	std::chrono::high_resolution_clock::time_point afterKernels = chrono::high_resolution_clock::now();
 
