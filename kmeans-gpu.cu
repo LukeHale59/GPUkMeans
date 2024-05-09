@@ -361,8 +361,6 @@ int main(int argc, char *argv[])
 	int iter = 2;
 	while(true)
 	{
-		bool done = true;
-
 		//clear each cluster value store
 		clear_cluster_kernel<<<number_of_blocks, threads_per_block>>>(device_clusters,total_values,  K);
 
