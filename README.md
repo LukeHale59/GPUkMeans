@@ -94,3 +94,8 @@ This graph explores the trade-off between data type and execution time on the GP
 **Additional Considerations:**
 
 * While this example focuses on execution time, other factors like memory usage and power consumption might also be relevant in certain scenarios.
+
+## TO DO
+
+* Parallel reduction in shared memory
+* Multi GPU version
