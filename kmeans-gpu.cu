@@ -33,44 +33,7 @@ void parseargs(int argc, char** argv, config_t& cfg) {
     }
 }
 
-struct PointStruct {
-    int id_cluster;
-    float* values;
-
-	PointStruct() : id_cluster(-1), values(nullptr) {}
-
-    // Constructor to initialize values array with a specified size
-    PointStruct(int size) : id_cluster(-1) {
-        values = new float[size];
-    }
-
-    // Destructor to free memory allocated for values array
-    ~PointStruct() {
-        delete[] values;
-    }
-};
-
-struct ClusterStruct {
-    int numPoints;
-    float* central_values;
-    float* central_values_sums;
-
-	ClusterStruct() : numPoints(0), central_values(nullptr), central_values_sums(nullptr) {}
-    // Constructor to initialize central_values and central_values_sums arrays with a specified size
-    ClusterStruct(int size) : numPoints(0){
-        numPoints = 0;
-        central_values = new float[size];
-        central_values_sums = new float[size];
-    }
-
-    // Destructor to free memory allocated for central_values and central_values_sums arrays
-    ~ClusterStruct() {
-        delete[] central_values;
-        delete[] central_values_sums;
-    }
-
-};
-
+// Assigns each point to its nearest cluster
 __global__ void distence_kernel_first(float* points,float* clusters, int total_points, int total_values, int K)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -95,7 +58,7 @@ __global__ void distence_kernel_first(float* points,float* clusters, int total_p
 					dist = clusters[m*(total_values*2 +1) +j + 1] -points[i*(total_values+1) +j + 1];
 					sum += dist * dist;
 				}
-	    	    //remove the sqrt
+	    	    //if distence is less then the current min distence, found new closest center
 				if(sum < min_dist)
 				{
 					min_dist = sum;
@@ -106,6 +69,7 @@ __global__ void distence_kernel_first(float* points,float* clusters, int total_p
 	}
 }
 
+//sets each clusters sum counter to zero
 __global__ void clear_cluster_kernel(float* clusters, int total_values, int K)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -120,7 +84,7 @@ __global__ void clear_cluster_kernel(float* clusters, int total_values, int K)
     }
 }
 
-//serial version
+//serial version of sum center kernel
 // __global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values)
 // {
 //     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -137,7 +101,7 @@ __global__ void clear_cluster_kernel(float* clusters, int total_values, int K)
 // 	}
 // }
 
-//atomic version
+//atomic version of getting the center of each cluster
 __global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -151,7 +115,8 @@ __global__ void sum_center_kernel(float* points,float* clusters, int total_point
 	}
 }
 
-//reduce version
+//reduce version using shared memorry. DOES NOT WORK
+
 // __global__ void sum_center_kernel(float* points,float* clusters, int total_points, int total_values, int K)
 // {
 // 	extern __shared__ float clustersLocal[];
@@ -214,7 +179,7 @@ __global__ void sum_center_kernel(float* points,float* clusters, int total_point
 // 	if (tid == 0) g_odata[blockIdx.x] = sdata[0];
 // }
 
-
+//gets the center for each cluster
 __global__ void get_center_kernel(float* clusters, int total_values, int K)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -230,6 +195,7 @@ __global__ void get_center_kernel(float* clusters, int total_values, int K)
     }
 }
 
+// Assigns each point to its nearest cluster - checks for convergence
 __global__ void distence_kernel_main(float* points,float* clusters, int total_points, int total_values, int K)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -293,13 +259,11 @@ int main(int argc, char *argv[])
     float* device_clusters;
     cudaMalloc(&device_clusters, sizeof(float) * K * total_values *2 + sizeof(float) * K);
     
-	//PointStruct* points = (PointStruct*)malloc(total_points * sizeof(PointStruct));
-
 	float* points = (float*)malloc(sizeof(float) * total_points * total_values + sizeof(float) * total_points);
 
-	// Initialize each PointStruct object
+	// Initialize each Point object
 	for(int i = 0; i < total_points; i++) {
-	    // Initialize the PointStruct object with the size of values array
+	    // Initialize the Point object with the size of values array
 	    // Fill in the values for each 'values' array
 	    for(int j = 0; j < total_values; j++) {
 	        float value;
@@ -308,11 +272,8 @@ int main(int argc, char *argv[])
 	    }
 	}
 
-	//ClusterStruct* clusters = (ClusterStruct*)malloc(K * sizeof(ClusterStruct(total_values)));
 	//values first, sums seconds
 	float* clusters = (float*)malloc(sizeof(float) * K * total_values *2 + sizeof(float) * K);
-
-	// std::chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
     
 	if(K > total_points)
 		return -1;
@@ -321,7 +282,7 @@ int main(int argc, char *argv[])
 	// choose K distinct values for the centers of the clusters
 	for(int i = 0; i < K; i++)
 	{
-		//new (&clusters[i]) ClusterStruct(total_values);
+		//while not found a unique point yet
 		while(true)
 		{
 			int index_point = rand() % total_points;
