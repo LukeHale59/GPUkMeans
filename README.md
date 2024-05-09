@@ -53,3 +53,44 @@ To utilize these options, execute the scripts with the desired flags and argumen
 ```bash
 cat datasets/wine.txt |  ./obj32/runCPU.sh -k 10 -s 123
 ```
+
+## Benchmarking
+
+This section showcases the performance improvements achieved by our GPU-accelerated K-Means implementation compared to the original CPU-based version. The graphs are generated in the `graphing/graphs.py` file.
+
+**Number of Clusters vs. Execution Time:**
+
+![VaryNumClusters](graphing/graphs/VaryNumClusters.png)
+
+This graph depicts the impact of varying cluster count (K) on execution time. As expected, the execution time generally increases with a larger number of clusters. However, at low cluster counts preformance suffers from high contention on the cluster sum values.
+
+**CPU vs. GPU Performance:**
+
+We evaluated the performance difference between CPU and GPU execution on datasets of varying sizes:
+
+* **600,000 Data Points:**
+
+![CPUVsGPU](graphing/graphs/CPUVsGPU.png)
+
+As shown, the GPU execution offers a substantial performance advantage compared to the CPU for a large dataset of 600,000 data points.
+
+* **6,000 Data Points (Wine Dataset):**
+
+![CPUVsGPUWine](graphing/graphs/CPUVsGPUWine.png)
+
+Even for a smaller dataset like the Wine dataset (around 6,000 points), the GPU execution exhibits faster performance.
+
+**Double vs. Float Precision on GPU:**
+
+![doubleVsFloat](graphing/graphs/doubleVsFloat.png)
+
+This graph explores the trade-off between data type and execution time on the GPU. Using single-precision floating-point numbers (float) leads to a slight performance gain compared to double-precision (double) while maintaining acceptable accuracy for many K-Means applications.
+
+**Note:**
+
+* The actual performance gains may vary depending on your hardware configuration, dataset size, and cluster count.
+* It's recommended to experiment with both CPU and GPU versions and choose the option that best suits your resource constraints and performance requirements.
+
+**Additional Considerations:**
+
+* While this example focuses on execution time, other factors like memory usage and power consumption might also be relevant in certain scenarios.
