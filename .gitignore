@@ -1,4 +1,4 @@
 .out
 *.d
 *.o
-obj32Serial/
+obj32/

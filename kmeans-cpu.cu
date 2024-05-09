@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 		}
 	}
     std::chrono::high_resolution_clock::time_point end_phase1 = chrono::high_resolution_clock::now();
-    
+    //calculate the nearest cluster for each point
     for(int i = 0; i < total_points; i++)
 	{
 		double sum = 0.0, min_dist;
@@ -164,22 +164,15 @@ int main(int argc, char *argv[])
 	while(true)
 	{
 		bool done = true;
-		//auto loop1_start = chrono::high_resolution_clock::now();
-		//very small differnce at about 80 clusters
-		// tbb::parallel_for( tbb::blocked_range<int>(0, K), [&](tbb::blocked_range<int> r){
-        // for(int i = r.begin(); i < r.end(); i++){
-        //     clusters[i].clearCentralValueSum();
-        //     clusters[i].setTotalPoints(0);
-        // }});
-		//TBB IS SLOWER FOR LOOP 1
+		//zero out all of the sum counters
 		for(int i = 0; i < K; i++){
 			for(size_t j = 0 ; j < total_values;j++){
 				clusters[i].central_values_sums[j]=0;
 			}
             clusters[i].numPoints = 0;
         }
-		//loop_duration = chrono::duration_cast<chrono::microseconds>(chrono::high_resolution_clock::now() - loop1_start);
-		//cout << "Loop 1 duration: " << loop_duration.count() << " microseconds" << endl;
+		
+		// add up all of the sums
 		auto loop2_start = chrono::high_resolution_clock::now();
         for(int i = 0; i < total_points; i++){
             for(int j = 0; j < total_values; j++){
@@ -187,27 +180,7 @@ int main(int argc, char *argv[])
             }
             clusters[points[i].id_cluster].numPoints++;
         }
-		//loop_duration = chrono::duration_cast<chrono::microseconds>(chrono::high_resolution_clock::now() - loop2_start);
-		//cout << "Loop 2 duration: " << loop_duration.count() << " microseconds" << endl;
-        // tbb::parallel_for( tbb::blocked_range<int>(0, K), [&](tbb::blocked_range<int> r){
-		// for(int i = r.begin(); i < r.end(); i++)
-		// {
-		// 	int total_points_cluster = clusters[i].getTotalPoints();
-        //     for(int j = 0; j < total_values; j++){
-        //         double sum = clusters[i].getCentralValueSum(j);
-        //         clusters[i].setCentralValue(j, sum / total_points_cluster);
-        //     }
-		// }});
-		//auto loop3_start = chrono::high_resolution_clock::now();
-		//TBB IS SLOWER FOR LOOP 3
-		// tbb::parallel_for( tbb::blocked_range<int>(0, K), [&](tbb::blocked_range<int> r){
-        // for(int i = r.begin(); i < r.end(); i++){
-        //     int total_points_cluster = clusters[i].getTotalPoints();
-        //     for(int j = 0; j < total_values; j++){
-        //         double sum = clusters[i].getCentralValueSum(j);
-        //         clusters[i].setCentralValue(j, sum / total_points_cluster);
-        //     }
-        // }});
+		// divide each sum by the total number of points
         for(int i = 0; i < K; i++){
             int total_points_cluster = clusters[i].numPoints;
             for(int j = 0; j < total_values; j++){
@@ -215,33 +188,7 @@ int main(int argc, char *argv[])
                 clusters[i].central_values[j] = sum / total_points_cluster;
             }
         }
-		//loop_duration = chrono::duration_cast<chrono::microseconds>(chrono::high_resolution_clock::now() - loop3_start);
-		//cout << "Loop 3 duration: " << loop_duration.count() << " microseconds" << endl;
-        // associates each point to the nearest center
-		// for(int i = 0; i < total_points; i++)
-		// {
-		// 	int id_old_cluster = points[i].getCluster();
-		// 	int id_nearest_center = getIDNearestCenter(points[i]);
-		// 	if(id_old_cluster != id_nearest_center)
-		// 	{
-		// 		points[i].setCluster(id_nearest_center);
-		// 		done = false;
-		// 	}
-		// }
-		//auto loop4_start = chrono::high_resolution_clock::now();
-		//TBB MUCH FASTER FOR THIS PART ABOUT 10x, for wine, 12 attributes, k = 80 about ~230 ms
-        // tbb::parallel_for( tbb::blocked_range<int>(0, total_points), [&](tbb::blocked_range<int> r){
-		// for(int i = r.begin(); i < r.end(); i++)
-		// {
-		// 	int id_old_cluster = points[i].getCluster();
-		// 	int id_nearest_center = getIDNearestCenter(points[i]);
-		// 	if(id_old_cluster != id_nearest_center)
-		// 	{
-		// 		points[i].setCluster(id_nearest_center);
-		// 		done = false;
-		// 	}
-		// }});
-		//distence_kernel<<<number_of_blocks, threads_per_block>>>(points,total_points, K, total_values, clusters,done);
+		// re calculate the nearset cluster for each point
 		for(int i = 0; i < total_points; i++)
 		{
 			int id_old_cluster = points[i].id_cluster;
@@ -275,18 +222,7 @@ int main(int argc, char *argv[])
 				done = false;
 			}
 		}
-		// for(int i = 0; i < total_points; i++)
-		// {
-		// 	int id_old_cluster = points[i].getCluster();
-		// 	int id_nearest_center = getIDNearestCenter(points[i]);
-		// 	if(id_old_cluster != id_nearest_center)
-		// 	{
-		// 		points[i].setCluster(id_nearest_center);
-		// 		done = false;
-		// 	}
-		// }
-		//loop_duration = chrono::duration_cast<chrono::microseconds>(chrono::high_resolution_clock::now() - loop4_start);
-		//cout << "Loop 4 duration: " << loop_duration.count() << " microseconds" << endl;
+
 		if(done == true || iter >= max_iterations)
 		{
 			//cout << "Break in iteration " << iter << "\n\n";
@@ -307,11 +243,8 @@ int main(int argc, char *argv[])
 		cout << endl;
 	}
 	cerr << "Iterations: " << iter << endl;
-	        //cout << "TOTAL EXECUTION TIME = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-begin).count()<<"\n";
     cout <<"Time for Serial: "<<std::chrono::duration_cast<std::chrono::milliseconds>(end-end_phase1).count() << " ms" <<endl;
-    //cout << "TIME PHASE 1 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end_phase1-begin).count()<<"\n";
-    
-    //cout << "TIME PHASE 2 = "<<std::chrono::duration_cast<std::chrono::microseconds>(end-end_phase1).count()<<"\n";
-
+    free(points);
+	free(clusters);
 	return 0;
 }
