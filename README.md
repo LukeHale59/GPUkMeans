@@ -2,7 +2,7 @@
 
 **GPU-accelerated K-Means Clustering**
 
-This repository implements the K-Means clustering algorithm using CUDA for efficient GPU acceleration. It's inspired by the work at [https://github.com/marcoscastro/kmeans](https://github.com/marcoscastro/kmeans).
+This repository implements the K-Means clustering algorithm using CUDA for efficient GPU acceleration. The original CPU version is at [https://github.com/marcoscastro/kmeans](https://github.com/marcoscastro/kmeans).
 
 **Key Features:**
 
